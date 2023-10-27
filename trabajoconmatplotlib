@@ -1,0 +1,111 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+class SistemasLineales:
+    def __init__(self, nombre_archivo): #Inicializa y tiene de parametro de entrada el archivo
+        self.nombre_archivo = nombre_archivo
+        try:
+            with open(self.nombre_archivo, 'r') as archivo: #indicamos que sea modo lectura
+                self.datos = archivo.read().split()
+        except FileNotFoundError: #se crea en un else en caso de no encontrar el archivo que llamamos
+            print('\n No puede abrirse el archivo')
+
+    @property
+    def mostrarmenu(self): #Funcion para imprirmir el menu
+        datos = self.datos
+        print('\nSistemas de Ecuaciones:')
+        for i in range(0, len(datos), 2): #iniciamos un ciclo para la cantidad de datos del archivo
+            ecuacion = datos[i]
+            valores = datos[i + 1].replace(",", " ")
+            print(f'{i // 2 + 1}: [{ecuacion}] = [ {valores} ]')
+        print('5. Salir') #finalizado el ciclo imprimimos la opcion de salir y de graficar
+        print('6. Graficar un sistema\n')
+
+    def extraermatriz(self, opc, vector_b): #se extrae la matriz, se indica el tamaño y el indice
+        string = self.datos[2 * opc - 2][2:].split(',')
+        matriz_ordenada = np.array([int(element) for element in string]).reshape((-1, vector_b.size)) #se ordena la matriz
+        return matriz_ordenada #retornamos la matriz
+
+    def extraervector(self, opc): #se extrae el vector
+        string = self.datos[2 * opc - 1][2:].split(',')
+        vector = np.array([int(element) for element in string]) #el vector se cambia a entero elemento por elemento
+        return vector #lo retorna
+
+    @staticmethod
+    def mostrarsistema(matriz, vector): #imprime el sistema
+        for i, row in enumerate(matriz): #el ciclo recorre la matriz y guarda los datos
+            equation = " + ".join([f"{row[j]}*X{j + 1}" for j in range(len(row))]) #se recorre los datos y se juntan al final con la funcion join
+            equation += f" = {vector[i]}" #se agrega el vector en la posicion i
+            print(equation)
+
+    @staticmethod
+    def ingresaropcion(mensaje): #pedir opcion al usuario
+        while True:
+            try:
+                opc = int(input(mensaje))
+                if 1 <= opc <= 6: #se controla si esta la opcion entre 1 y 6
+                    return opc
+                else:
+                    print('\nSeleccione una opcion correcta\n') #si ingresa un numero fuera vuelve a pedirlo
+            except ValueError:
+                print('\nSeleccione una opcion correcta\n') #si ingresa un digito diferente vuelve a pedirlo
+
+    @staticmethod
+    def solucionar_sistema(matriz, vector): #resuelve el sistema con numpy
+        try:
+            sol = np.linalg.solve(matriz, vector)
+            i = 0
+            print('\nResultado del sistema\n')
+            for element in sol:
+                i += 1
+                print(f'x{i} = {round(element, 1)}')  #imprime la solucion del sistema
+            print('\nSelecciona otra opcion para continuar o 5 para salir\n') #vuelve a pedir ingresar otra opcion
+
+        except np.linalg.LinAlgError:
+            matriz_aumentada = np.column_stack((matriz, vector))
+            rango_mat = np.linalg.matrix_rank(matriz)
+            rango_mataumen = np.linalg.matrix_rank(matriz_aumentada)
+            if rango_mat == rango_mataumen:
+                print('\nEl sistema no tiene solución\n')
+            else:
+                print('\nEl sistema tiene soluciones infinitas\n')
+
+    @staticmethod
+    def graficar_sistema_2d(matriz, vector): #grafica con matplotlib
+        if matriz.shape != (2, 2) or vector.shape != (2,):
+            print("Este metodo solo es para sistemas con dos incognitas") #si el sistema no es de 2 incognitas imprime
+            return
+
+        x = np.linspace(-10, 10, 100) #se crea el arreglo para el eje x
+        y1 = (vector[0] - matriz[0, 0] * x) / matriz[0, 1] #y1 calcula la primera ecuacion
+        y2 = (vector[1] - matriz[1, 0] * x) / matriz[1, 1] #y2 calcula la segunda ecuacion
+
+        plt.figure(figsize=(8, 6))
+        plt.plot(x, y1, label=f'{matriz[0, 0]}x + {matriz[0, 1]}y = {vector[0]}') #se grafica las ecuaciones
+        plt.plot(x, y2, label=f'{matriz[1, 0]}x + {matriz[1, 1]}y = {vector[1]}')
+        plt.xlabel('x') #ponemos las etiquetas de los ejes
+        plt.ylabel('y')
+        plt.legend()
+        plt.grid(True)
+        plt.title('Grafica de las ecuaciones lineales') #ponemos el titulo de la grafica
+        plt.show() #imprime la grafica
+
+if __name__ == '__main__':
+    arch = SistemasLineales('sistema2d.txt') #llamamos el archivo
+    while True:
+        arch.mostrarmenu #se llama el metodo del menu
+        opcion = arch.ingresaropcion('Elija el sistema que desea solucionar o 6 si desea graficar\n ')
+        if opcion == 6: #controlamos la opcion de graficar
+            opc_graficar = arch.ingresaropcion('Elija el sistema que desea graficar \n ')
+            vector = arch.extraervector(opc_graficar)
+            matriz = arch.extraermatriz(opc_graficar, vector)
+            arch.graficar_sistema_2d(matriz, vector)
+        elif opcion == 5: #controlamos la opcion de salir
+            print('Hasta pronto')
+            break
+        else:
+            vector = arch.extraervector(opcion)
+            matriz = arch.extraermatriz(opcion, vector)
+            arch.mostrarsistema(matriz, vector)
+            arch.solucionar_sistema(matriz, vector)
